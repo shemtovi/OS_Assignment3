@@ -111,3 +111,93 @@ crypto_srv_init(void)
   p->state = RUNNABLE;
   release(&p->lock);
 }
+
+uint64 sys_map_shared_pages(void){
+  //map_shared_pages(struct proc* src_proc,struct proc* dst_proc,uint64 src_va, uint64 size)
+  return 0;
+}
+uint64 sys_unmap_shared_pages(void){
+  struct proc *p = myproc();
+
+  const struct shmem_request req = shmem_queue_remove();
+  
+  struct proc* src_proc = find_proc(req.src_pid);
+  if (src_proc == 0) {
+    return -1;
+  }
+  
+  return map_shared_pages(src_proc, p, req.src_va, req.size);
+
+}
+
+uint64 sys_map_shared_pages(void){
+  uint64 src_proc_pid;
+  uint64 dst_proc_pid;
+  uint64 src_va;
+  uint64 size;
+
+  argint(0, (int*)&src_proc_pid);
+  argint(1, (int*)&dst_proc_pid);
+  argaddr(2, &src_va);
+  argint(3, (int*)&size);
+ 
+
+  struct proc* src_proc = find_proc(src_proc_pid);
+  struct proc* dst_proc = find_proc(dst_proc_pid);
+  if (src_proc == 0 || dst_proc == 0) {
+    return -1;
+  }
+
+  uint64 dst_va = map_shared_pages(src_proc, dst_proc, src_va, size);
+  if (dst_va == 0) {
+    return -1;
+  }
+
+  return dst_va;
+
+}
+
+uint64 
+map_shared_pages(struct proc* src_proc,struct proc* dst_proc,uint64 src_va, uint64 size){
+  uint64 src_va_end = src_va + size;
+  if (src_va >= src_va_end) {
+    return 0;
+  }
+
+  acquire(&src_proc->lock);
+  if (src_proc->sz < src_va_end) {
+    release(&src_proc->lock);
+    return 0;
+  }
+  uint64 dst_va = PGROUNDDOWN(dst_proc->sz);
+  for (uint64 va = src_va; va < src_va_end; va += PGSIZE) {
+    pte_t* pte = walk(src_proc->pagetable, va, 0);
+    if (pte == 0) {
+      release(&src_proc->lock);
+      return 0;
+    }
+
+    if ((*pte & PTE_V) == 0) {
+      release(&src_proc->lock);
+      return 0;
+    }
+
+    pte_t* new_pte = walk(dst_proc->pagetable, dst_va, 1);
+    if (new_pte == 0) {
+      release(&src_proc->lock);
+      return 0;
+    }
+
+    *new_pte = PTE_V | PTE_R | PTE_W | PTE_X | PTE_U | PTE_XWR | PTE_XTR;
+    *new_pte |= PTE_ADDR(*pte);
+    dst_va += PGSIZE;
+  }
+
+  dst_proc->sz = PGROUNDUP(dst_va);
+  release(&src_proc->lock);
+  return dst_va - size;
+}
+
+uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size){
+  return 0;
+}

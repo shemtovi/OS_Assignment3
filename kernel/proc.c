@@ -62,6 +62,15 @@ procinit(void)
       p->kstack = KSTACK((int) (p - proc));
   }
 }
+// Function to find a process by its PID
+struct proc* find_proc(int pid) {
+    for (int i = 0; i < NPROC; i++) {
+        if (proc[i].pid == pid) {
+            return &proc[i];
+        }
+    }
+    return 0; // Process not found
+}
 
 // Must be called with interrupts disabled,
 // to prevent race with process being moved

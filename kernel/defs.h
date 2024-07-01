@@ -108,6 +108,7 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+struct proc*    find_proc(int pid);
 
 // shmem_queue.c
 void            shmem_queue_init(void);
@@ -116,7 +117,8 @@ struct shmem_request shmem_queue_remove();
 
 // syscrypt.c
 void            crypto_srv_init(void);
-
+uint64 map_shared_pages(struct proc* src_proc,struct proc* dst_proc,uint64 src_va, uint64 size);
+uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size);
 // swtch.S
 void            swtch(struct context*, struct context*);
 

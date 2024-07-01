@@ -112,22 +112,18 @@ crypto_srv_init(void)
   release(&p->lock);
 }
 
-uint64 sys_map_shared_pages(void){
-  //map_shared_pages(struct proc* src_proc,struct proc* dst_proc,uint64 src_va, uint64 size)
-  return 0;
-}
+
 uint64 sys_unmap_shared_pages(void){
-  struct proc *p = myproc();
+  uint64 proc_pid;
+  uint64 addr;
+  uint64 size;
 
-  const struct shmem_request req = shmem_queue_remove();
-  
-  struct proc* src_proc = find_proc(req.src_pid);
-  if (src_proc == 0) {
-    return -1;
-  }
-  
-  return map_shared_pages(src_proc, p, req.src_va, req.size);
+  argint(0, (int*)&proc_pid);
+  argaddr(1, &addr);
+  argint(2, (int*)&size);
 
+  struct proc* proc = find_proc(proc_pid);
+  return unmap_shared_pages(proc,addr,size);
 }
 
 uint64 sys_map_shared_pages(void){
@@ -157,47 +153,45 @@ uint64 sys_map_shared_pages(void){
 
 }
 
-uint64 
-map_shared_pages(struct proc* src_proc,struct proc* dst_proc,uint64 src_va, uint64 size){
-  uint64 src_va_end = src_va + size;
-  if (src_va >= src_va_end) {
-    return 0;
-  }
-
-  acquire(&src_proc->lock);
-  if (src_proc->sz < src_va_end) {
-    release(&src_proc->lock);
-    return 0;
-  }
-  uint64 dst_va = PGROUNDDOWN(dst_proc->sz);
-  for (uint64 va = src_va; va < src_va_end; va += PGSIZE) {
-    pte_t* pte = walk(src_proc->pagetable, va, 0);
-    if (pte == 0) {
-      release(&src_proc->lock);
+uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src_va, uint64 size) {
+    uint64 src_start = PGROUNDDOWN(src_va);
+    uint64 src_end = PGROUNDUP(src_va + size);
+    if (src_proc->sz < src_end) 
       return 0;
+    uint64 dst_start_va = PGROUNDUP(dst_proc->sz);
+    uint64 dst_end_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, dst_proc->sz + (src_end - src_start),0);
+    if (dst_end_va == 0)
+        return 0;
+
+    for (uint64 addr = src_start; addr < src_end; addr += PGSIZE) {
+        pte_t* pte = walk(src_proc->pagetable, addr, 0);
+        if (pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
+            return 0;
+
+        uint64 pa = PTE2PA(*pte);
+        uint64 flags = PA2PTE(pa) | PTE_S; 
+
+        if (mappages(dst_proc->pagetable, dst_start_va + (addr - src_start), PGSIZE, pa, flags) != 0)
+            return 0;
     }
 
-    if ((*pte & PTE_V) == 0) {
-      release(&src_proc->lock);
-      return 0;
-    }
-
-    pte_t* new_pte = walk(dst_proc->pagetable, dst_va, 1);
-    if (new_pte == 0) {
-      release(&src_proc->lock);
-      return 0;
-    }
-
-    *new_pte = PTE_V | PTE_R | PTE_W | PTE_X | PTE_U | PTE_XWR | PTE_XTR;
-    *new_pte |= PTE_ADDR(*pte);
-    dst_va += PGSIZE;
-  }
-
-  dst_proc->sz = PGROUNDUP(dst_va);
-  release(&src_proc->lock);
-  return dst_va - size;
+    dst_proc->sz = dst_end_va;
+    return dst_start_va + (src_va - src_start);
 }
 
 uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size){
+  uint64 unmap_start = PGROUNDDOWN(addr);
+  uint64 unmap_end = PGROUNDUP(addr + size);
+  if (p->sz < unmap_end || size < 0 || addr < 0) 
+      return -1;
+  for (uint64 va = unmap_start; va < unmap_end; va += PGSIZE) {
+        pte_t* pte = walk(p->pagetable, va, 0);
+        if((*pte & PTE_S) == 0)
+          return -1;
+
+  }
+  uvmunmap(p->pagetable,unmap_start,((unmap_end-unmap_start)%PGSIZE),0);
+  p->sz -= unmap_end-unmap_start;
   return 0;
 }
+

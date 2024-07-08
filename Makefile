@@ -125,6 +125,7 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 
 UPROGS=\
 	$U/_shmem_test1\
+	$U/_shmem_test2\
 	$U/_cat\
 	$U/_crypto_cli\
 	$U/_crypto_srv\

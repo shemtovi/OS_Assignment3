@@ -191,16 +191,25 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
 uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size){
   uint64 unmap_start = PGROUNDDOWN(addr);
   uint64 unmap_end = PGROUNDUP(addr + size);
-  if (p->sz < unmap_end || size < 0 || addr < 0) 
-      return -1;
+  printf("unmap_start :%x%x, unmap_end :%x%x,addr:%x%x, size:%x%x\n",(uint32)(unmap_start >> 32), (uint32)unmap_start,
+                                                          (uint32)(unmap_end >> 32), (uint32)unmap_end,
+                                                          (uint32)(addr >> 32), (uint32)addr,
+                                                          (uint32)(size >> 32), (uint32)size);
+  
+  if (p->sz < unmap_end || size < 0 || addr < 0) {
+    printf("unmap fall in 200");
+    return -1;
+  }
   for (uint64 va = unmap_start; va < unmap_end; va += PGSIZE) {
         pte_t* pte = walk(p->pagetable, va, 0);
-        if((*pte & PTE_S) == 0)
+        if((*pte & PTE_S) == 0){
+          printf("unmap fall in PTE_S ==0");
           return -1;
+        }
 
   }
-  uvmunmap(p->pagetable,unmap_start,((unmap_end-unmap_start)%PGSIZE),0);
-  p->sz -= unmap_end-unmap_start;
+  uvmunmap(p->pagetable,unmap_start,((unmap_end-unmap_start)/PGSIZE),0);
+  p->sz = unmap_start;
   return 0;
 }
 

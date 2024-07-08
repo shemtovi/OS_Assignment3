@@ -174,6 +174,8 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 void
 uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
+  // printf("va :%x%x, npages :%d\n",(uint32)(va >> 32), (uint32)va,
+  //                                                         npages);
   uint64 a;
   pte_t *pte;
 
@@ -194,6 +196,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
     }
+    //printf("PTE unmapped:%p\n",pte);
     *pte = 0;
   }
 }

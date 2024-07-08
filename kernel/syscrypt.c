@@ -155,27 +155,36 @@ uint64 sys_map_shared_pages(void){
 
 uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src_va, uint64 size) {
     uint64 src_start = PGROUNDDOWN(src_va);
-    uint64 src_end = PGROUNDUP(src_va + size);
-    if (src_proc->sz < src_end) 
-      return 0;
+    uint64 src_end = PGROUNDUP(src_va + (uint32)size);
     uint64 dst_start_va = PGROUNDUP(dst_proc->sz);
-    uint64 dst_end_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, dst_proc->sz + (src_end - src_start),0);
-    if (dst_end_va == 0)
-        return 0;
+    printf("src_start :%x%x, src_end :%x%x,dst_start_va:%x%x\n,src_va:%x%x\n",(uint32)(src_start >> 32), (uint32)src_start,
+                                                                              (uint32)(src_end >> 32), (uint32)src_end,
+                                                                              (uint32)(dst_start_va >> 32), (uint32)dst_start_va,
+                                                                              (uint32)(src_va >> 32), (uint32)src_va);
+    
+    uint64 dst_addr = dst_start_va;
 
-    for (uint64 addr = src_start; addr < src_end; addr += PGSIZE) {
+    for (uint64 addr = src_start; addr < src_end; addr += PGSIZE) {       
         pte_t* pte = walk(src_proc->pagetable, addr, 0);
-        if (pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
+        printf("addr:%d PTE:%p\n",addr,pte);
+        if (pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0){
+             printf("pte FLAGS faild\n");
             return 0;
+        }
+          
 
         uint64 pa = PTE2PA(*pte);
-        uint64 flags = PA2PTE(pa) | PTE_S; 
+        uint64 flags = PTE_FLAGS(*pte) | PTE_S; 
 
-        if (mappages(dst_proc->pagetable, dst_start_va + (addr - src_start), PGSIZE, pa, flags) != 0)
-            return 0;
+        if (mappages(dst_proc->pagetable, dst_addr, PGSIZE, pa, flags) != 0){
+          printf("MAPPAGES FAILS\n");
+          return 0;
+        }
+        dst_addr += PGSIZE;
+            
     }
-
-    dst_proc->sz = dst_end_va;
+    printf("finished mappage\n");
+    dst_proc->sz = dst_addr;
     return dst_start_va + (src_va - src_start);
 }
 

@@ -6,37 +6,27 @@
 
 
 int main() {
-    char *shared_mem = "not initialaized";
     int perent_id = getpid();
+     char *test = (char*)malloc(20);
     int pid = fork();
     if (pid < 0) {
         printf("Fork failed\n");
         exit(1);
     } else if (pid == 0) { // Child process
-        // Wait a bit for the parent to map the shared memory
-        sleep(1);
-        int child_pid = getpid();
-        int addr = map_shared_pages(perent_id,child_pid,*shared_mem, SHARED_MEMORY_SIZE);
-        // Print the shared memory content
-        printf("Child read: %s\n", &addr);
+        sleep(10);
 
-        // Exit child
+        printf("test:%s, test_addr:%d\n", test,test);
+        int child_pid = getpid();
+        uint64 addr = map_shared_pages(perent_id,child_pid,(uint64)test, 20);
+         printf("addr: %d\n", addr);
+        printf("Child read:%s\n", (char*)addr);
+
         exit(0);
     } else { // Parent process
-        // Map shared memory to the child process
-        // if (map_shared_pages(shared_mem, SHARED_MEMORY_SIZE, pid) == 0) {
-        //     printf("Shared memory mapping failed\n");
-        //     exit(1);
-        // }
-
-        // Wait for the child to finish
-        shared_mem = "Hello Child";
+        strcpy(test, "Hello Childddddd");
         wait(0);
 
-        // Clean up (optional, since we're exiting)
-        free(shared_mem);
     }
 
     exit(0);
 }
-

@@ -156,17 +156,11 @@ uint64 sys_map_shared_pages(void){
 uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src_va, uint64 size) {
     uint64 src_start = PGROUNDDOWN(src_va);
     uint64 src_end = PGROUNDUP(src_va + (uint32)size);
-    uint64 dst_start_va = PGROUNDUP(dst_proc->sz);
-    printf("src_start :%x%x, src_end :%x%x,dst_start_va:%x%x\n,src_va:%x%x\n",(uint32)(src_start >> 32), (uint32)src_start,
-                                                                              (uint32)(src_end >> 32), (uint32)src_end,
-                                                                              (uint32)(dst_start_va >> 32), (uint32)dst_start_va,
-                                                                              (uint32)(src_va >> 32), (uint32)src_va);
-    
+    uint64 dst_start_va = PGROUNDUP(dst_proc->sz);   
     uint64 dst_addr = dst_start_va;
 
     for (uint64 addr = src_start; addr < src_end; addr += PGSIZE) {       
         pte_t* pte = walk(src_proc->pagetable, addr, 0);
-        printf("addr:%d PTE:%p\n",addr,pte);
         if (pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0){
              printf("pte FLAGS faild\n");
             return 0;
@@ -182,27 +176,19 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
         dst_addr += PGSIZE;
             
     }
-    printf("finished mappage\n");
     dst_proc->sz = dst_addr;
     return dst_start_va + (src_va - src_start);
 }
 
 uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size){
   uint64 unmap_start = PGROUNDDOWN(addr);
-  uint64 unmap_end = PGROUNDUP(addr + size);
-  printf("unmap_start :%x%x, unmap_end :%x%x,addr:%x%x, size:%x%x\n",(uint32)(unmap_start >> 32), (uint32)unmap_start,
-                                                          (uint32)(unmap_end >> 32), (uint32)unmap_end,
-                                                          (uint32)(addr >> 32), (uint32)addr,
-                                                          (uint32)(size >> 32), (uint32)size);
-  
+  uint64 unmap_end = PGROUNDUP(addr + size); 
   if (p->sz < unmap_end || size < 0 || addr < 0) {
-    printf("unmap fall in 200");
     return -1;
   }
   for (uint64 va = unmap_start; va < unmap_end; va += PGSIZE) {
         pte_t* pte = walk(p->pagetable, va, 0);
         if((*pte & PTE_S) == 0){
-          printf("unmap fall in PTE_S ==0");
           return -1;
         }
 

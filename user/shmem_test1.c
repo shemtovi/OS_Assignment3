@@ -14,16 +14,13 @@ int main() {
         exit(1);
     } else if (pid == 0) { // Child process
         sleep(10);
-
-        printf("test:%s, test_addr:%d\n", test,test);
         int child_pid = getpid();
         uint64 addr = map_shared_pages(perent_id,child_pid,(uint64)test, 20);
-         printf("addr: %d\n", addr);
         printf("Child read:%s\n", (char*)addr);
 
         exit(0);
     } else { // Parent process
-        strcpy(test, "Hello Childddddd");
+        strcpy(test, "Hello Child");
         wait(0);
 
     }

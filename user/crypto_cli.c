@@ -19,19 +19,22 @@ int main (void) {
   uint data_size = sizeof(message);
 
   const uint op_size = sizeof(struct crypto_op) + key_size + data_size;
+  //1
   struct crypto_op* op = malloc(op_size);
 
   op->type = CRYPTO_OP_TYPE_DECRYPT;
   op->state = CRYPTO_OP_STATE_INIT;
   op->key_size = key_size;
   op->data_size = data_size;
-
+  //2
   memcpy(op->payload, key, key_size);
   memcpy(op->payload + key_size, message, data_size);
-
+  //3
+  
   crypto_op(op, op_size);
   
   volatile enum crypto_op_state* op_state = &op->state;
+  //8
   while (*op_state == CRYPTO_OP_STATE_INIT)
     ;
 
@@ -42,6 +45,7 @@ int main (void) {
     printf("crypto_cli: crypto operation failed\n");
     exit(1);
   } else {
+    //9
     printf("crypto_cli: decrypted message: %s\n", op->payload + key_size);
   }
 

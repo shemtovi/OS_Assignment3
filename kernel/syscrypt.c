@@ -57,7 +57,7 @@ uint64 sys_take_shared_memory_request(void) {
   if (src_proc == 0) {
     return -1;
   }
-  
+  acquire(&src_proc->lock);
   const uint64 dst_va = map_shared_pages(src_proc, p, req.src_va, req.size);
   if (dst_va == 0) {
     release(&src_proc->lock);
@@ -175,7 +175,6 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
 
         uint64 pa = PTE2PA(*pte);
         uint64 flags = PTE_FLAGS(*pte) | PTE_S; 
-
         if (mappages(dst_proc->pagetable, dst_addr, PGSIZE, pa, flags) != 0){
           printf("MAPPAGES FAILS\n");
           return 0;
